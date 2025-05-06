@@ -42,20 +42,30 @@ async def registrar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === COMANDO /listar ===
 async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message or update.callback_query.message
+    if not message:
+        print("Não foi encontrado nenhum gasto.")
+        return
+
     try:
         dados = planilha.get_all_records()
         if not dados:
-            await update.message.reply_text("Nenhum gasto registrado.")
+            await message.reply_text("Você ainda não registrou nenhum gasto.")
             return
 
         mensagem = "📋 *Seus gastos registrados:*\n"
-        for reg in dados[-10:]:  # mostra os últimos 10
-            mensagem += f"{reg['Data']} | {reg['Descrição']} | {reg['Categoria']} | R$ {reg['Valor']:.2f}\n"
+        for reg in dados[-10:]:
+            try:
+                valor = float(reg['Valor']) if reg['Valor'] else 0.0
+            except ValueError:
+                valor = 0.0
+            mensagem += f"{reg['Data']} | {reg['Descrição']} | {reg['Categoria']} | R$ {valor:.2f}\n"
 
-        await update.message.reply_text(mensagem, parse_mode="Markdown")
+        await message.reply_text(mensagem, parse_mode="Markdown")
     except Exception as e:
-        await update.message.reply_text("Erro ao listar gastos.")
+        await message.reply_text("Erro ao listar gastos.")
         print(f"Erro: {e}")
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
