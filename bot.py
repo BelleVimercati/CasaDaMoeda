@@ -14,31 +14,32 @@ arquivo_credenciais = os.environ.get("ARQUIVO_CREDENCIAIS")
 
 planilha = conectGoogle(arquivo_credenciais, planilha_id)
 
+
 # === COMANDO /gasto ===
 async def registrar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        if update.message and update.message.text.startswith('/gasto'):
-            partes = update.message.text.split(' ', 3)  # Divide no máximo em 4 partes
-            if len(partes) < 4:
-                raise ValueError("Formato incorreto")
-            
-            descricao = partes[1]
-            categoria = partes[2]
-            try:
-                valor = float(partes[3])
-            except ValueError:
-                raise ValueError("Valor deve ser um número")
-            
-            data = datetime.now().strftime("%d/%m/%Y")
-            
-            # Aqui você deve adicionar à planilha
-            planilha.append_row([data, descricao, categoria, valor])
+        partes = update.message.text.split(" ", 2)
+        if len(partes) < 3:
+            raise ValueError("Formato incorreto")
+
+        descricao = partes[0]
+        categoria = partes[1]
+        try:
+            valor = float(partes[2])
+        except ValueError:
+            raise ValueError("Valor deve ser um número")
+
+        data = datetime.now().strftime("%d/%m/%Y")
+        planilha.append_row([data, descricao, categoria, valor])
 
         await update.message.reply_text(
-                f"✅ Gasto registrado:\n📌 {descricao} | 🏷 {categoria} | 💰 R$ {valor:.2f}"
-            )
+            f"✅ Gasto registrado:\n📌 {descricao} | 🏷 {categoria} | 💰 R$ {valor:.2f}"
+        )
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Erro: {str(e)}\nUse o formato: /gasto descrição categoria valor")
+        await update.message.reply_text(
+            await update.message.reply_text(f"⚠️ Erro: {str(e)}\nUse o formato: descrição categoria valor")
+        )
+
 
 # === COMANDO /listar ===
 async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,7 +57,7 @@ async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mensagem = "📋 *Seus gastos registrados:*\n"
         for reg in dados[-10:]:
             try:
-                valor = float(reg['Valor']) if reg['Valor'] else 0.0
+                valor = float(reg["Valor"]) if reg["Valor"] else 0.0
             except ValueError:
                 valor = 0.0
             mensagem += f"{reg['Data']} | {reg['Descrição']} | {reg['Categoria']} | R$ {valor:.2f}\n"
@@ -79,6 +80,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await update.message.reply_text("Escolha sua opção:", reply_markup=reply_markup)
 
+
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -86,22 +88,18 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text=f"Selected option: {query.data}")
     option = query.data
     if option == "Registro":
-        # Armazena que o usuário está no modo de registro
-        context.user_data['awaiting_expense'] = True
+        context.user_data["awaiting_expense"] = True
         await query.edit_message_text(
-            "Envie o gasto no formato: /gasto descrição categoria valor\n"
-            "Exemplo: /gasto Almoço Alimentação 25.50"
+            "Envie o gasto no formato: descrição categoria valor\n"
+            "Exemplo: Almoço Alimentação 25.50"
         )
     elif option == "Consulta":
         await listar_gastos(update, context)
 
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if 'awaiting_expense' in context.user_data and context.user_data['awaiting_expense']:
-        if update.message.text.startswith('/gasto'):
-            context.user_data['awaiting_expense'] = False
-            await registrar_gasto(update, context)
-        else:
-            await update.message.reply_text("Por favor, use o comando /gasto seguido dos dados")
+    if context.user_data.get('awaiting_expense'):
+        await registrar_gasto(update, context)
+        context.user_data['awaiting_expense'] = False
     else:
-        # Comportamento padrão para outras mensagens
-        pass
+        await update.message.reply_text("Envie /start para ver as opções disponíveis.")
