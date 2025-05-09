@@ -81,7 +81,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Escolha sua opção:", reply_markup=reply_markup)
 
 
-async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def buttonOptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
