@@ -2,13 +2,15 @@ import os
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
-    ContextTypes,
     CallbackQueryHandler,
     MessageHandler,
     filters,
 )
+from handlers.callbacks import buttonOptions
 from dotenv import load_dotenv
-from bot import registrar_gasto, listar_gastos, start, buttonOptions, handle_message
+from bot import *
+from core.actions import *
+from handlers.callbacks import buttonOptions
 
 
 load_dotenv()

@@ -17,7 +17,28 @@ Feita diretamente no chat usando os comandos /gasto e /litar
 
 - [x] Criação de botões de gasto e listagem
 - [x] Criação de botões de categorias
-- [ ] Separação de gastos no Débito e Crédito
+- [x] Separação de gastos no Débito e Crédito
+- [ ] Re-organização de projeto
+
+#### Nova estrutura que o projeto terá:
+
+~~~plaintext
+    gasto_bot/
+    ├── bot.py                      # Início da aplicação
+    ├── handlers/                  # Lida com comandos, mensagens e cliques
+    │   ├── __init__.py
+    │   ├── commands.py
+    │   └── callbacks.py
+    ├── core/                      # Lógica de negócios e serviços
+    │   ├── __init__.py
+    │   ├── actions.py             # Registrar gasto, listar, etc.
+    │   └── planilha.py            # Wrapper da planilha (o atual sheets.py)
+    ├── ui/                        # Botões e menus
+    │   ├── __init__.py
+    │   └── interface.py
+    ├── .env
+    ├── requirements.txt
+~~~
 
 **3° Etapa:**
 
