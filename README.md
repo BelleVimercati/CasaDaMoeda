@@ -16,7 +16,7 @@ Feita diretamente no chat usando os comandos /gasto e /litar
 **2° Etapa:**
 
 - [x] Criação de botões de gasto e listagem
-- [ ] Criação de botões de categorias
+- [x] Criação de botões de categorias
 - [ ] Separação de gastos no Débito e Crédito
 
 **3° Etapa:**

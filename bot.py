@@ -7,41 +7,33 @@ from sheets import conectGoogle
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
-
+# Conexão
 load_dotenv()
 planilha_id = os.environ.get("PLANILHA_ID")
 arquivo_credenciais = os.environ.get("ARQUIVO_CREDENCIAIS")
-
 planilha = conectGoogle(arquivo_credenciais, planilha_id)
 
 
-# === COMANDO /gasto ===
+# Função de gasto
 async def registrar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        partes = update.message.text.split(" ", 2)
-        if len(partes) < 3:
-            raise ValueError("Formato incorreto")
+    query = update.callback_query
+    await query.answer()
 
-        descricao = partes[0]
-        categoria = partes[1]
-        try:
-            valor = float(partes[2])
-        except ValueError:
-            raise ValueError("Valor deve ser um número")
+    categoria = context.user_data.get("categoria")
+    descricao = context.user_data.get("descricao")
+    valor = context.user_data.get("valor")
+    data = datetime.now().strftime("%d/%m/%Y")
 
-        data = datetime.now().strftime("%d/%m/%Y")
-        planilha.append_row([data, descricao, categoria, valor])
+    planilha.append_row([data, descricao, categoria, valor])
 
-        await update.message.reply_text(
-            f"✅ Gasto registrado:\n📌 {descricao} | 🏷 {categoria} | 💰 R$ {valor:.2f}"
-        )
-    except Exception as e:
-        await update.message.reply_text(
-            await update.message.reply_text(f"⚠️ Erro: {str(e)}\nUse o formato: descrição categoria valor")
-        )
+    await query.edit_message_text(
+        f"✅ Gasto registrado:\n📌 {descricao} | 🏷 {categoria} | 💰 R$ {valor:.2f}"
+    )
+
+    context.user_data.clear()   
 
 
-# === COMANDO /listar ===
+# Função de listagem
 async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message or update.callback_query.message
     if not message:
@@ -67,20 +59,18 @@ async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text("Erro ao listar gastos.")
         print(f"Erro: {e}")
 
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# Função que exibe os botões ao usuário
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton("Registrar Gasto", callback_data="Registro"),
             InlineKeyboardButton("Listar Gastos", callback_data="Consulta"),
         ],
     ]
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_text("Escolha sua opção:", reply_markup=reply_markup)
 
-
+# Tratamento dos clickes dos botões
 async def buttonOptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -88,18 +78,56 @@ async def buttonOptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text=f"Selected option: {query.data}")
     option = query.data
     if option == "Registro":
-        context.user_data["awaiting_expense"] = True
+        #O bot salva uma flag em context.user_data informando a aplicação que o usuário enviará um gasto.
+        context.user_data["awaiting_expense"] = True 
         await query.edit_message_text(
-            "Envie o gasto no formato: descrição categoria valor\n"
-            "Exemplo: Almoço Alimentação 25.50"
+            "Envie o gasto no formato: descrição valor\n"
+            "Exemplo: Almoço 25.50"
         )
     elif option == "Consulta":
         await listar_gastos(update, context)
 
+    #Botões de categorias de gastos
+    elif option.startswith("cat_") and context.user_data.get("awaiting_category"):
+        context.user_data["categoria"] = option.replace("cat_", "")
+        await registrar_gasto(update, context)
 
+
+# Lida com mensagens enviadas diretamente
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('awaiting_expense'):
-        await registrar_gasto(update, context)
+        await tratar_gasto(update, context)
         context.user_data['awaiting_expense'] = False
     else:
         await update.message.reply_text("Envie /start para ver as opções disponíveis.")
+
+#Função para a criação de botões de categoria
+async def tratar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    partes = update.message.text.split(" ", 1)
+    if len(partes) < 2:
+            await update.message.reply_text("Formato inválido. Use: descrição valor")
+            return
+
+    descricao = partes[0]
+
+    try:
+        valor = float(partes[1])
+    except ValueError:
+        await update.message.reply_text("Formato inválido. Use: descrição valor")
+        return
+    
+    #Alterando o contexto da ação do usuário
+    context.user_data["descricao"] = descricao
+    context.user_data["valor"] = valor
+    context.user_data["awaiting_expense"] = False
+    context.user_data["awaiting_category"] = True
+
+    #Criando os botões de categoria
+    keyboard = [
+        [InlineKeyboardButton("Essencial", callback_data="cat_Alimentação")],
+        [InlineKeyboardButton("Diversão", callback_data="cat_Necessidades")],
+        [InlineKeyboardButton("Caridade/Presentes", callback_data="cat_Caridade")],
+        [InlineKeyboardButton("Vontades", callback_data="cat_Vontades")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Escolha uma categoria:", reply_markup=reply_markup)

@@ -20,6 +20,7 @@ if __name__ == "__main__":
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(buttonOptions))
+    # chama handle_message() para qualquer texto que não seja comando — é aqui que ele verifica se você está enviando um gasto.
     app.add_handler(CommandHandler("gasto", registrar_gasto))
     app.add_handler(CommandHandler("listar", listar_gastos))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
