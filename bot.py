@@ -21,13 +21,14 @@ async def registrar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     categoria = context.user_data.get("categoria")
     descricao = context.user_data.get("descricao")
+    pagamento = context.user_data.get("pagamento")
     valor = context.user_data.get("valor")
     data = datetime.now().strftime("%d/%m/%Y")
 
-    planilha.append_row([data, descricao, categoria, valor])
+    planilha.append_row([data, descricao, categoria, valor, pagamento])
 
     await query.edit_message_text(
-        f"✅ Gasto registrado:\n📌 {descricao} | 🏷 {categoria} | 💰 R$ {valor:.2f}"
+        f"✅ Gasto registrado:\n📌 {descricao} | 🏷 {categoria} | 💰 R$ {valor:.2f} | 🏦 {pagamento}"
     )
 
     context.user_data.clear()   
@@ -52,7 +53,7 @@ async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 valor = float(reg["Valor"]) if reg["Valor"] else 0.0
             except ValueError:
                 valor = 0.0
-            mensagem += f"{reg['Data']} | {reg['Descrição']} | {reg['Categoria']} | R$ {valor:.2f}\n"
+            mensagem += f"{reg['Data']} | {reg['Descrição']} | {reg['Categoria']} | R$ {valor:.2f} | {reg['Pagamento']}\n"
 
         await message.reply_text(mensagem, parse_mode="Markdown")
     except Exception as e:
@@ -90,19 +91,24 @@ async def buttonOptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #Botões de categorias de gastos
     elif option.startswith("cat_") and context.user_data.get("awaiting_category"):
         context.user_data["categoria"] = option.replace("cat_", "")
+        await tratar_forma(update, context)
+
+    #Botões de forma de pagamento
+    elif option.startswith("pg_") and context.user_data.get("awaiting_pagamento"):
+        context.user_data["pagamento"] = option.replace("pg_", "")
         await registrar_gasto(update, context)
 
 
 # Lida com mensagens enviadas diretamente
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('awaiting_expense'):
-        await tratar_gasto(update, context)
+        await tratar_categoria(update, context)
         context.user_data['awaiting_expense'] = False
     else:
         await update.message.reply_text("Envie /start para ver as opções disponíveis.")
 
 #Função para a criação de botões de categoria
-async def tratar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def tratar_categoria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     partes = update.message.text.split(" ", 1)
     if len(partes) < 2:
             await update.message.reply_text("Formato inválido. Use: descrição valor")
@@ -131,3 +137,19 @@ async def tratar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Escolha uma categoria:", reply_markup=reply_markup)
+
+# Criação de botões de forma de pagamento
+async def tratar_forma(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    context.user_data["awaiting_category"] = False
+    context.user_data["awaiting_pagamento"] = True
+
+    keyboard = [
+        [InlineKeyboardButton("Débito", callback_data="pg_Débito")],
+        [InlineKeyboardButton("Crédito", callback_data="pg_Crédito")],
+        [InlineKeyboardButton("Pix", callback_data="pg_Pix")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("Escolha a forma de pagamento:", reply_markup=reply_markup)
