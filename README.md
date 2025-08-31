@@ -18,7 +18,7 @@ Feita diretamente no chat usando os comandos /gasto e /litar
 - [x] Criação de botões de gasto e listagem
 - [x] Criação de botões de categorias
 - [x] Separação de gastos no Débito e Crédito
-- [ ] Re-organização de projeto
+- [x] Re-organização de projeto
 
 #### Nova estrutura que o projeto terá:
 
@@ -40,11 +40,11 @@ Feita diretamente no chat usando os comandos /gasto e /litar
     ├── requirements.txt
 ~~~
 
-**3° Etapa:**
+**3° Etapa: (possivelmente Web)**
 
 - [ ] Criação dos alertas
 - [ ] Soma de total gasto por categoria
-- [ ] Filtros de listagem para o mês (Algo no formato de /listar Mês)
+- [ ] Filtros de listagem para o mês
 
 **4° Etapa:** (Se possível, usando Docling)
 

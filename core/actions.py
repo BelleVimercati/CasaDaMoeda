@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 
 from core.planilha import planilha
 
+
 # Função de gasto
 async def registrar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -14,10 +15,11 @@ async def registrar_gasto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     categoria = context.user_data.get("categoria")
     descricao = context.user_data.get("descricao")
     pagamento = context.user_data.get("pagamento")
-    valor = context.user_data.get("valor")
+    valor = context.user_data.get("valor")  
     data = datetime.now().strftime("%d/%m/%Y")
 
-    planilha.append_row([data, descricao, categoria, valor, pagamento])
+    valor_para_planilha = f"{valor:.2f}"
+    planilha.append_row([data, descricao, categoria, valor_para_planilha, pagamento])
 
     await query.edit_message_text(
         f"✅ Gasto registrado:\n📌 {descricao} | 🏷 {categoria} | 💰 R$ {valor:.2f} | 🏦 {pagamento}"
@@ -42,10 +44,19 @@ async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mensagem = "📋 *Seus gastos registrados:*\n"
         for reg in dados[-10:]:
             try:
-                valor = float(reg["Valor"]) if reg["Valor"] else 0.0
-            except ValueError:
+                valor_str = str(reg.get("Valor", "0.0")).replace(",", ".")
+                valor = float(valor_str)
+            except (ValueError, TypeError):
                 valor = 0.0
-            mensagem += f"{reg['Data']} | {reg['Descrição']} | {reg['Categoria']} | R$ {valor:.2f} | {reg['Pagamento']}\n"
+
+            data_reg = reg.get("Data", "")
+            desc_reg = reg.get("Descrição", "")
+            cat_reg = reg.get("Categoria", "")
+            pag_reg = reg.get("Pagamento", "")
+
+            mensagem += (
+                f"{data_reg} | {desc_reg} | {cat_reg} | R$ {valor:.2f} | {pag_reg}\n"
+            )
 
         await message.reply_text(mensagem, parse_mode="Markdown")
     except Exception as e:
@@ -55,26 +66,30 @@ async def listar_gastos(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Função para a criação de botões de categoria
 async def tratar_categoria(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    partes = update.message.text.split(" ", 1)
+    # Aceita tanto ponto quanto vírgula do usuário
+    texto_mensagem = update.message.text.replace(",", ".")
+    partes = texto_mensagem.split(" ", 1)
+
     if len(partes) < 2:
-        await update.message.reply_text("Formato inválido. Use: descrição valor")
+        await update.message.reply_text("Formato inválido. Use: `descrição valor`")
         return
 
     descricao = partes[0]
+    valor_str = partes[1]
 
     try:
-        valor = float(partes[1])
+        valor = float(valor_str)
     except ValueError:
-        await update.message.reply_text("Formato inválido. Use: descrição valor")
+        await update.message.reply_text(
+            "Valor inválido. Use um número para o valor. Ex: `Lanche 15.50`"
+        )
         return
 
-    # Alterando o contexto da ação do usuário
     context.user_data["descricao"] = descricao
     context.user_data["valor"] = valor
     context.user_data["awaiting_expense"] = False
     context.user_data["awaiting_category"] = True
 
-    # Criando os botões de categoria
     keyboard = [
         [InlineKeyboardButton("Essencial", callback_data="cat_Alimentação")],
         [InlineKeyboardButton("Diversão", callback_data="cat_Necessidades")],
@@ -89,6 +104,10 @@ async def tratar_categoria(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def tratar_forma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
+    # Extrai a categoria do callback_data (ex: "cat_Alimentação" -> "Alimentação")
+    categoria = query.data.split("_", 1)[1]
+    context.user_data["categoria"] = categoria
 
     context.user_data["awaiting_category"] = False
     context.user_data["awaiting_pagamento"] = True
